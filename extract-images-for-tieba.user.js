@@ -8,55 +8,10 @@
 // @version     0.0.1
 // @icon        http://tb1.bdstatic.com/tb/favicon.ico
 // @grant       GM_setClipboard
+// @grant       GM_xmlhttpRequest
 // @license     MPL
 // ==/UserScript==
 (function () {
-	// AJAX lib
-	var AJAX_FINISHED           =  0;
-	var AJAX_NO_BROWSER_SUPPORT = -1;
-	var AJAX_STARTING           = -2;
-	var AJAX_PARTIAL_PROGRESS   = -3;
-	var AJAX_FAILED             = -4;
-
-	var getXHR = function () {
-		var xhr = false;
-		if (window.XMLHttpRequest) {
-			xhr = new XMLHttpRequest();
-		}
-		if (!xhr) {
-			return false;
-		}
-		return xhr;
-	};
-
-	var makeRequest = function (url, requestType, payload, callback) {
-		if (typeof callback !== "function") {
-			alert("说好的回调呢 ٩͡[๏̯͡๏]");
-			return false;
-		}
-		var xhr = getXHR();
-		if (xhr) {
-			xhr.onreadystatechange = function () {
-				if (xhr.readyState == 4) {
-					if (xhr.status == 200) {
-						callback(xhr, AJAX_FINISHED);
-					} else {
-						callback(xhr, AJAX_FAILED);
-					}
-				}
-			};
-			xhr.open(requestType, url, true);
-			if (requestType == "POST") {
-				xhr.setRequestHeader("Content-Type","application/x-www-form-urlencoded;");
-			}
-			xhr.send(payload);
-			callback(xhr, AJAX_STARTING);
-		} else {
-			callback(xhr, AJAX_NO_BROWSER_SUPPORT);
-		}
-		return xhr;
-	};
-
 	// 去重
 	var doUnique = function (arr) {
 		var result = [], hash = {};
@@ -101,25 +56,21 @@
 	var extractAllPages = function (pages) {
 		var imageSrcArray = [];
 		var parsedPages = 0;
-		var parseRespond = function (xhr, status) {
+		var parseRespond = function (xhr) {
 			if (xhr) {
-				if (AJAX_FINISHED === status) {
-					var regexImageTag = new RegExp(/<img[^<>]*class=\"BDE_Image\"[^<>]*src\=\"((http|https):\/\/)imgsrc\.baidu\.com[\w\d\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)\"([^<>]*)>/, "gi");
-					var regexImageSrc = new RegExp(/((http|https):\/\/)+(\w+\.)+(\w+)[\w\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)/, "gi");
-					var regexImageId = new RegExp(/([\w\d]+)\.(jpg|jpeg|gif|png|webp)$/, "gi");
-					var images = xhr.response.match(regexImageTag);
-					if (null !== images) {
-						for (var i = 0; i < images.length; i++) {
-							var currentImageSrc = images[i].match(regexImageSrc);
-							if (null !== currentImageSrc && 1 === currentImageSrc.length) {
-								imageSrcArray.push("http://imgsrc.baidu.com/forum/pic/item/" + currentImageSrc[0].match(regexImageId)[0]);
-							}
+				var regexImageTag = new RegExp(/<img[^<>]*class=\"BDE_Image\"[^<>]*src\=\"((http|https):\/\/)imgsrc\.baidu\.com[\w\d\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)\"([^<>]*)>/, "gi");
+				var regexImageSrc = new RegExp(/((http|https):\/\/)+(\w+\.)+(\w+)[\w\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)/, "gi");
+				var regexImageId = new RegExp(/([\w\d]+)\.(jpg|jpeg|gif|png|webp)$/, "gi");
+				var images = xhr.response.match(regexImageTag);
+				if (null !== images) {
+					for (var i = 0; i < images.length; i++) {
+						var currentImageSrc = images[i].match(regexImageSrc);
+						if (null !== currentImageSrc && 1 === currentImageSrc.length) {
+							imageSrcArray.push("http://imgsrc.baidu.com/forum/pic/item/" + currentImageSrc[0].match(regexImageId)[0]);
 						}
 					}
-					parsedPages++;
-				} else if (AJAX_FAILED === status) {
-					parsedPages++;
 				}
+				parsedPages++;
 				if (pages === parsedPages) {
 					var result = doUnique(imageSrcArray);
 					if (null === result || 0 === result.length) {
@@ -131,10 +82,18 @@
 				}
 			}
 		};
+		var xhrErrorHandler = function (xhr) {
+			parsedPages++;
+		};
 
 		for (var i = 1; i <= pages; i++) {
 			var url = window.location.origin + window.location.pathname + "?pn=" + i;
-			makeRequest(url, "GET", null, parseRespond);
+			GM_xmlhttpRequest({
+				method:  'GET',
+				url:     url,
+				onload:  parseRespond,
+				onerror: xhrErrorHandler
+			});
 		}
 	};
 
