@@ -73,30 +73,40 @@
 
 	// 取得所有分页原图链接
 	var extractAllPages = function (pages, auto) {
-		var imageSrcArray = [];
+		var imageSrc = {};
 		var parsedPages = 0;
+
 		var parseRespond = function (xhr) {
-			if (xhr) {
-				var regexImageTag = new RegExp(/<img[^<>]*class=\"BDE_Image\"[^<>]*src\=\"((http|https):\/\/)imgsrc\.baidu\.com[\w\d\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)\"([^<>]*)>/, "gi");
-				var regexImageSrc = new RegExp(/((http|https):\/\/)+(\w+\.)+(\w+)[\w\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)/, "gi");
-				var regexImageId = new RegExp(/([\w\d]+)\.(jpg|jpeg|gif|png|webp)$/, "gi");
-				var images = xhr.response.match(regexImageTag);
-				if (null !== images) {
-					for (var i = 0; i < images.length; i++) {
-						var currentImageSrc = images[i].match(regexImageSrc);
-						if (null !== currentImageSrc && 1 === currentImageSrc.length) {
-							imageSrcArray.push("http://imgsrc.baidu.com/forum/pic/item/" + currentImageSrc[0].match(regexImageId)[0]);
-						}
+			var currentPage = xhr.finalUrl.replace(/http\:\/\/tieba.baidu.com\/p\/(\d+)\?pn=(\d+)$/, "$2") - 1;
+			var regexImageTag = new RegExp(/<img[^<>]*class=\"BDE_Image\"[^<>]*src\=\"((http|https):\/\/)imgsrc\.baidu\.com[\w\d\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)\"([^<>]*)>/, "gi");
+			var regexImageSrc = new RegExp(/((http|https):\/\/)+(\w+\.)+(\w+)[\w\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)/, "gi");
+			var regexImageId = new RegExp(/([\w\d]+)\.(jpg|jpeg|gif|png|webp)$/, "gi");
+			var images = xhr.response.match(regexImageTag);
+
+			imageSrc[currentPage] = [];
+			if (null !== images) {
+				for (var i = 0; i < images.length; i++) {
+					var currentImageSrc = images[i].match(regexImageSrc);
+					if (null !== currentImageSrc && 1 === currentImageSrc.length) {
+						imageSrc[currentPage].push("http://imgsrc.baidu.com/forum/pic/item/" + currentImageSrc[0].match(regexImageId)[0]);
 					}
 				}
-				parsedPages++;
-				if (pages === parsedPages) {
-					var result = doUnique(imageSrcArray);
-					if (null === result || 0 === result.length) {
-						$id("extracted").innerHTML = "然而并没有图片 (╯#-_-)╯~~~~~~~~~~~~~~~~~╧═╧";
-					} else {
-						exportAlbum(result, auto);
+			}
+			parsedPages++;
+
+			if (pages === parsedPages) {
+				var imageSrcArray = [];
+				for (var i = 0; i < pages; i++) {
+					for (var j = 0; j < imageSrc[i].length; j++) {
+						imageSrcArray.push(imageSrc[i][j]);
 					}
+				}
+
+				var result = doUnique(imageSrcArray);
+				if (null === result || 0 === result.length) {
+					$id("extracted").innerHTML = "然而并没有图片 (╯#-_-)╯~~~~~~~~~~~~~~~~~╧═╧";
+				} else {
+					exportAlbum(result, auto);
 				}
 			}
 		};
