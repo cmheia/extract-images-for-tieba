@@ -5,7 +5,7 @@
 // @description Adds a button that get all attached images as original size to every post.
 // @include     http://tieba.baidu.com/p/*
 // @author      cmheia
-// @version     0.2.0
+// @version     0.2.1
 // @icon        http://tb1.bdstatic.com/tb/favicon.ico
 // @grant       GM_setClipboard
 // @grant       GM_xmlhttpRequest
@@ -162,8 +162,8 @@
 		var removeAlbum = function () {
 			if (null !== $id("preview_window")) {
 				document.body.removeChild($id("preview_window"));
-				$id("extracted").innerHTML = "";
 			}
+			$id("extracted").innerHTML = "";
 		};
 
 		// 恢复被隐藏的元素
