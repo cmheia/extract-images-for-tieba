@@ -5,7 +5,7 @@
 // @description Adds a button that get all attached images as original size to every post.
 // @include     http://tieba.baidu.com/p/*
 // @author      cmheia
-// @version     0.2.2
+// @version     0.2.3
 // @icon        http://tb1.bdstatic.com/tb/favicon.ico
 // @grant       GM_setClipboard
 // @grant       GM_xmlhttpRequest
@@ -40,7 +40,7 @@
 
 	// 创建样式表
 	var addStyle = function () {
-		apendStyle(".margin8 {margin:8px;} .preview_item {padding:3px;float:left;position:relative;} .preview_box {max-width:300px;max-height:300px;} .preview_container {z-index:11000;} .preview_selector {position:absolute;left:0;} .preview_excluded {background:#FFCCFF;}");
+		apendStyle(".margin8 {margin:8px;} .preview_item {padding:3px;float:left;position:relative;} .preview_box {max-width:300px;max-height:300px;vertical-align:bottom;} .preview_container {z-index:11000;} .preview_selector {position:absolute;left:0;} .preview_excluded {background:#FFCCFF;}");
 	};
 
 	// 取得分页数量
