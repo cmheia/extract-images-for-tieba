@@ -5,7 +5,7 @@
 // @description Adds a button that get all attached images as original size to every post.
 // @include     http://tieba.baidu.com/p/*
 // @author      cmheia
-// @version     0.2.3
+// @version     0.2.4
 // @icon        http://tb1.bdstatic.com/tb/favicon.ico
 // @grant       GM_setClipboard
 // @grant       GM_xmlhttpRequest
@@ -55,6 +55,10 @@
 		var regexImageSrc = new RegExp(/((http|https):\/\/)+(\w+\.)+(\w+)[\w\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)/, "gi");
 		var regexImageId = new RegExp(/([\w\d]+)\.(jpg|jpeg|gif|png|webp)$/, "gi");
 		var images = content.match(regexImageTag);
+		if (null === images) {
+			var regexImageTag = new RegExp(/<img[^<>]*src\=\"((http|https):\/\/)imgsrc\.baidu\.com[\w\d\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)\"[^<>]*class=\"BDE_Image\"([^<>]*)>/, "gi");
+			images = content.match(regexImageTag);
+		}
 		if (null !== images) {
 			for (var i = 0; i < images.length; i++) {
 				var currentImageSrc = images[i].match(regexImageSrc);
@@ -82,6 +86,10 @@
 			var regexImageSrc = new RegExp(/((http|https):\/\/)+(\w+\.)+(\w+)[\w\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)/, "gi");
 			var regexImageId = new RegExp(/([\w\d]+)\.(jpg|jpeg|gif|png|webp)$/, "gi");
 			var images = xhr.response.match(regexImageTag);
+			if (null === images) {
+				var regexImageTag = new RegExp(/<img[^<>]*src\=\"((http|https):\/\/)imgsrc\.baidu\.com[\w\d\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)\"[^<>]*class=\"BDE_Image\"([^<>]*)>/, "gi");
+				images = xhr.response.match(regexImageTag);
+			}
 
 			imageSrc[currentPage] = [];
 			if (null !== images) {
