@@ -5,7 +5,7 @@
 // @description Adds a button that get all attached images as original size to every post.
 // @include     http://tieba.baidu.com/p/*
 // @author      cmheia
-// @version     0.2.5
+// @version     0.2.6
 // @icon        http://tb1.bdstatic.com/tb/favicon.ico
 // @grant       GM_setClipboard
 // @grant       GM_xmlhttpRequest
@@ -93,6 +93,7 @@
 
 			imageSrc[currentPage] = getImgTags(xhr.response);
 			parsedPages++;
+			$id("extracted").innerHTML = "到手" + parsedPages + "页，就剩" + (pages - parsedPages) + "页啦 (ฅ´ω`ฅ)";
 
 			if (pages === parsedPages) {
 				var imageSrcArray = [];
