@@ -5,7 +5,7 @@
 // @description Adds a button that get all attached images as original size to every post.
 // @include     http://tieba.baidu.com/p/*
 // @author      cmheia
-// @version     0.2.4
+// @version     0.2.5
 // @icon        http://tb1.bdstatic.com/tb/favicon.ico
 // @grant       GM_setClipboard
 // @grant       GM_xmlhttpRequest
@@ -48,27 +48,35 @@
 		return parseInt(document.getElementsByClassName('l_posts_num')[0].childNodes[3].getElementsByTagName("span")[1].innerText);
 	};
 
-	// 取得单个分页原图链接
-	var extractSinglePage = function (content) {
-		var imageSrcArray = [];
+	// 取得IMG标签中的SRC
+	var getImgTags = function (content) {
 		var regexImageTag = new RegExp(/<img[^<>]*class=\"BDE_Image\"[^<>]*src\=\"((http|https):\/\/)imgsrc\.baidu\.com[\w\d\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)\"([^<>]*)>/, "gi");
-		var regexImageSrc = new RegExp(/((http|https):\/\/)+(\w+\.)+(\w+)[\w\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)/, "gi");
-		var regexImageId = new RegExp(/([\w\d]+)\.(jpg|jpeg|gif|png|webp)$/, "gi");
 		var images = content.match(regexImageTag);
 		if (null === images) {
 			var regexImageTag = new RegExp(/<img[^<>]*src\=\"((http|https):\/\/)imgsrc\.baidu\.com[\w\d\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)\"[^<>]*class=\"BDE_Image\"([^<>]*)>/, "gi");
 			images = content.match(regexImageTag);
 		}
+		var imageSrc = [];
 		if (null !== images) {
-			for (var i = 0; i < images.length; i++) {
-				var currentImageSrc = images[i].match(regexImageSrc);
+			var regexImageSrc = new RegExp(/((http|https):\/\/)+(\w+\.)+(\w+)[\w\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)/, "gi");
+			var regexImageId = new RegExp(/([\w\d]+)\.(jpg|jpeg|gif|png|webp)$/, "gi");
+			imageSrc = images.map(function (val) {
+				var currentImageSrc = val.match(regexImageSrc);
 				if (null !== currentImageSrc && 1 === currentImageSrc.length) {
-					imageSrcArray.push("http://imgsrc.baidu.com/forum/pic/item/" + currentImageSrc[0].match(regexImageId)[0]);
+					return "http://imgsrc.baidu.com/forum/pic/item/" + currentImageSrc[0].match(regexImageId)[0];
+				} else {
+					return "";
 				}
-			}
+			});
 		}
+		return imageSrc;
+	};
 
-		var result = doUnique(imageSrcArray);
+	// 取得单个分页原图链接
+	var extractSinglePage = function (content) {
+		var images = getImgTags(content);
+
+		var result = doUnique(images);
 		if (null === result || 0 === result.length) {
 			return null;
 		}
@@ -82,24 +90,8 @@
 
 		var parseRespond = function (xhr) {
 			var currentPage = xhr.finalUrl.replace(/http\:\/\/tieba.baidu.com\/p\/(\d+)\?pn=(\d+)$/, "$2") - 1;
-			var regexImageTag = new RegExp(/<img[^<>]*class=\"BDE_Image\"[^<>]*src\=\"((http|https):\/\/)imgsrc\.baidu\.com[\w\d\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)\"([^<>]*)>/, "gi");
-			var regexImageSrc = new RegExp(/((http|https):\/\/)+(\w+\.)+(\w+)[\w\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)/, "gi");
-			var regexImageId = new RegExp(/([\w\d]+)\.(jpg|jpeg|gif|png|webp)$/, "gi");
-			var images = xhr.response.match(regexImageTag);
-			if (null === images) {
-				var regexImageTag = new RegExp(/<img[^<>]*src\=\"((http|https):\/\/)imgsrc\.baidu\.com[\w\d\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)\"[^<>]*class=\"BDE_Image\"([^<>]*)>/, "gi");
-				images = xhr.response.match(regexImageTag);
-			}
 
-			imageSrc[currentPage] = [];
-			if (null !== images) {
-				for (var i = 0; i < images.length; i++) {
-					var currentImageSrc = images[i].match(regexImageSrc);
-					if (null !== currentImageSrc && 1 === currentImageSrc.length) {
-						imageSrc[currentPage].push("http://imgsrc.baidu.com/forum/pic/item/" + currentImageSrc[0].match(regexImageId)[0]);
-					}
-				}
-			}
+			imageSrc[currentPage] = getImgTags(xhr.response);
 			parsedPages++;
 
 			if (pages === parsedPages) {
@@ -185,7 +177,7 @@
 		};
 
 		// 恢复被隐藏的元素
-		var showOtherElements = function (imags) {
+		var showOtherElements = function () {
 			for (var i = 0; i < document.body.childNodes.length; i++) {
 				if ("DIV" === document.body.childNodes[i].tagName && "y" === document.body.childNodes[i].getAttribute("data-hide")) {
 					document.body.childNodes[i].style.display = "";
