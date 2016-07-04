@@ -5,7 +5,7 @@
 // @description Adds a button that get all attached images as original size to every post.
 // @include     http://tieba.baidu.com/p/*
 // @author      cmheia
-// @version     0.2.6
+// @version     0.2.7
 // @icon        http://tb1.bdstatic.com/tb/favicon.ico
 // @grant       GM_setClipboard
 // @grant       GM_xmlhttpRequest
@@ -53,7 +53,7 @@
 		var regexImageTag = new RegExp(/<img[^<>]*class=\"BDE_Image\"[^<>]*src\=\"((http|https):\/\/)imgsrc\.baidu\.com[\w\d\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)\"([^<>]*)>/, "gi");
 		var images = content.match(regexImageTag);
 		if (null === images) {
-			var regexImageTag = new RegExp(/<img[^<>]*src\=\"((http|https):\/\/)imgsrc\.baidu\.com[\w\d\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)\"[^<>]*class=\"BDE_Image\"([^<>]*)>/, "gi");
+			regexImageTag = new RegExp(/<img[^<>]*src\=\"((http|https):\/\/)imgsrc\.baidu\.com[\w\d\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)\"[^<>]*class=\"BDE_Image\"([^<>]*)>/, "gi");
 			images = content.match(regexImageTag);
 		}
 		var imageSrc = [];
@@ -87,17 +87,14 @@
 	var extractAllPages = function (pages, auto) {
 		var imageSrc = {};
 		var parsedPages = 0;
+		var failedPages = 0;
 
-		var parseRespond = function (xhr) {
-			var currentPage = xhr.finalUrl.replace(/http\:\/\/tieba.baidu.com\/p\/(\d+)\?pn=(\d+)$/, "$2") - 1;
-
-			imageSrc[currentPage] = getImgTags(xhr.response);
-			parsedPages++;
-			$id("extracted").innerHTML = "到手" + parsedPages + "页，就剩" + (pages - parsedPages) + "页啦 (ฅ´ω`ฅ)";
-
+		var collectImages = function () {
 			if (pages === parsedPages) {
+				console.debug("提取失败", failedPages, "页");
 				var imageSrcArray = [];
-				for (var i = 0; i < pages; i++) {
+				for (var i in imageSrc) {
+					console.debug("第", i, "页", imageSrc[i].length, "图");
 					for (var j = 0; j < imageSrc[i].length; j++) {
 						imageSrcArray.push(imageSrc[i][j]);
 					}
@@ -111,8 +108,24 @@
 				}
 			}
 		};
-		var xhrErrorHandler = function (xhr) {
+		var parseRespond = function (xhr) {
+			var currentPage = xhr.finalUrl.replace(/http\:\/\/tieba.baidu.com\/p\/(\d+)\?pn=(\d+)$/, "$2") - 1;
+
+			imageSrc[currentPage] = getImgTags(xhr.response);
 			parsedPages++;
+			$id("extracted").innerHTML = "到手" + parsedPages + "页，就剩" + (pages - parsedPages) + "页啦 (ฅ´ω`ฅ)";
+
+			collectImages();
+		};
+		var xhrErrorHandler = function (xhr) {
+			var currentPage = xhr.finalUrl.replace(/http\:\/\/tieba.baidu.com\/p\/(\d+)\?pn=(\d+)$/, "$2") - 1;
+
+			$id("extracted").innerHTML = "第" + currentPage + "页提取失败 (ಥ_ಥ)";
+			console.debug("第", currentPage, "页提取失败");
+			parsedPages++;
+			failedPages++;
+
+			collectImages();
 		};
 
 		for (var i = 1; i <= pages; i++) {
