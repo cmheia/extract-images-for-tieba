@@ -5,7 +5,7 @@
 // @description Adds a button that get all attached images as original size to every post.
 // @include     http://tieba.baidu.com/p/*
 // @author      cmheia
-// @version     0.2.8
+// @version     0.2.9
 // @icon        http://tb1.bdstatic.com/tb/favicon.ico
 // @grant       GM_setClipboard
 // @grant       GM_xmlhttpRequest
@@ -59,25 +59,50 @@
 
 	// 取得IMG标签中的SRC
 	var getImgTags = function (content) {
-		var regexImageTag = new RegExp(/<img[^<>]*class=\"BDE_Image\"[^<>]*src\=\"((http|https):\/\/)imgsrc\.baidu\.com[\w\d\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)\"([^<>]*)>/, "gi");
-		var images = content.match(regexImageTag);
+		// console.group("取得IMG标签中的SRC");
+		var images = content.match(/<img[^<>]*class=\"BDE_Image\"[^<>]*src\=\"(?:(?:(?:http|https)\:\/\/)?[^<>]*(?:jpg|jpeg|gif|png|webp))\"[^<>]*>/g);
+
 		if (null === images) {
-			regexImageTag = new RegExp(/<img[^<>]*src\=\"((http|https):\/\/)imgsrc\.baidu\.com[\w\d\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)\"[^<>]*class=\"BDE_Image\"([^<>]*)>/, "gi");
-			images = content.match(regexImageTag);
+			images = content.match(/<img[^<>]*src\=\"(?:(?:(?:http|https)\:\/\/)?[^<>]*(?:jpg|jpeg|gif|png|webp))\"[^<>]*class=\"BDE_Image\"[^<>]*>/g);
+			// images = content.match(/<img[^<>]*src\=\"(?:(?:(?:http|https)\:\/\/)?[\w\d\-]*(?:\.)?([\w\d\-]+\.[\w\d\-]+)+[\w\/\.\-\%\=]*(?:jpg|jpeg|gif|png|webp))\"[^<>]*class=\"BDE_Image\"[^<>]*>/g);
 		}
+		// console.log("匹配次数", images.length, images[0]);
 		var imageSrc = [];
 		if (null !== images) {
-			var regexImageSrc = new RegExp(/((http|https):\/\/)+(\w+\.)+(\w+)[\w\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)/, "gi");
-			var regexImageId = new RegExp(/([\w\d]+)\.(jpg|jpeg|gif|png|webp)$/, "gi");
-			imageSrc = images.map(function (val) {
-					var currentImageSrc = val.match(regexImageSrc);
-					if (null !== currentImageSrc && 1 === currentImageSrc.length) {
-						return "http://imgsrc.baidu.com/forum/pic/item/" + currentImageSrc[0].match(regexImageId)[0];
-					} else {
-						return "";
+			imageSrc = images.map(function (val, i) {
+				let src = val.match(/(?:(?:http|https):\/\/)([^\.]*)([^\/]*)(.*)(?:\.(?:jpg|jpeg|gif|png|webp))/);
+				// console.log(i, val);
+				// console.log(src);
+				if (null !== src) {
+					if ("adscdn" === src[1] || ".bdstatic.com" === src[2] ) {
+						// 先去广告
+						// console.log("去广告");
+						return undefined;
 					}
-				});
+					if (".baidu.com" === src[2] || ".bdimg.com" === src[2]) {
+						let m = src[0].match(/(?:[\w\d\.]+)(?:jpg|jpeg|gif|png|webp)/);
+						// console.log("return", m);
+						return `http://imgsrc.baidu.com/forum/pic/item/${m[0]}`;
+					}
+					if (".sinaimg.cn" === src[2]) {
+						let m = src[0].match(/((?:http|https)\:\/\/[\w\d\.]+)sinaimg\.cn\/([\w\d]+)\/([\w\d\.\?]+)/);
+						// console.log("return", m);
+						return `${m[1]}sinaimg.cn/large/${m[3]}`;
+					}
+					// console.log("原始链接", src[0]);
+					return src[0];
+				} else {
+					return undefined;
+				}
+			});
 		}
+		for (let i = imageSrc.length - 1; i >= 0; i--) {
+			if (undefined === imageSrc[i]) {
+				imageSrc.splice(i, 1);
+			}
+		}
+		// console.log(imageSrc)
+		// console.groupEnd();
 		return imageSrc;
 	};
 
@@ -86,6 +111,7 @@
 		var images = getImgTags(content);
 
 		var result = doUnique(images);
+		// console.warn(result)
 		if (null === result || 0 === result.length) {
 			return null;
 		}
@@ -100,10 +126,10 @@
 
 		var collectImages = function () {
 			if (pages === parsedPages) {
-				console.debug("提取失败", failedPages, "页");
+				// console.debug("提取失败", failedPages, "页");
 				var imageSrcArray = [];
 				for (let i in imageSrc) {
-					console.debug("第", i, "页", imageSrc[i].length, "图");
+					// console.debug("第", i, "页", imageSrc[i].length, "图");
 					for (let j of imageSrc[i]) {
 						imageSrcArray.push(j);
 					}
@@ -130,7 +156,7 @@
 			var currentPage = xhr.finalUrl.replace(/http\:\/\/tieba.baidu.com\/p\/(\d+)\?pn=(\d+)$/, "$2") - 1;
 
 			msg(`第${currentPage}页提取失败 (ಥ_ಥ)`);
-			console.debug(`第${currentPage}页提取失败 (ಥ_ಥ)`);
+			// console.debug(`第${currentPage}页提取失败 (ಥ_ಥ)`);
 			parsedPages++;
 			failedPages++;
 
@@ -150,7 +176,7 @@
 
 	// 仅收割当前分页
 	var extracterImage = function (auto) {
-		var result = extractSinglePage(document.querySelector(".p_postlist").innerHTML);
+		var result = extractSinglePage(document.querySelector('#j_p_postlist').innerHTML);
 		if (null !== result && 0 < result.length) {
 			exportAlbum(result, auto);
 		} else {
@@ -160,11 +186,12 @@
 
 	// 收割全部分页
 	var extracterImages = function (auto) {
+		// console.clear();
 		var pages = getPages();
 		if (0 === pages) {
 			msg("度娘又改版了 (╯#-_-)╯~~~~~~~~~~~~~~~~~╧═╧");
 		} else if (1 === pages) {
-			let result = extractSinglePage(document.querySelector(".p_postlist").innerHTML);
+			let result = extractSinglePage(document.querySelector('#j_p_postlist').innerHTML);
 			if (null !== result && 0 < result.length) {
 				exportAlbum(result, auto);
 			} else {
@@ -394,13 +421,13 @@
 				DOMObserverTimer = setTimeout(function () {
 						DOMObserver.disconnect();
 						if (!$id("extracted")) {
-							console.log("重新添加按钮");
+							// console.log("重新添加按钮");
 							addButton();
 						}
-						DOMObserver.observe(document.querySelector('#j_core_title_wrap'), DOMObserverConfig);
+						DOMObserver.observe(document.querySelector('#j_p_postlist'), DOMObserverConfig);
 					}, 100);
 			});
-		DOMObserver.observe(document.querySelector('#j_core_title_wrap'), DOMObserverConfig);
+		DOMObserver.observe(document.querySelector('#j_p_postlist'), DOMObserverConfig);
 	})();
 
 	addStyle();
