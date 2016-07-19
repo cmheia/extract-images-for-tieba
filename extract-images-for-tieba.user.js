@@ -5,21 +5,24 @@
 // @description Adds a button that get all attached images as original size to every post.
 // @include     http://tieba.baidu.com/p/*
 // @author      cmheia
-// @version     0.2.7
+// @version     0.2.8
 // @icon        http://tb1.bdstatic.com/tb/favicon.ico
 // @grant       GM_setClipboard
 // @grant       GM_xmlhttpRequest
 // @license     MPL
 // ==/UserScript==
 (function () {
+	'use strict';
+
 	var $id = function (o) {
 		return document.getElementById(o);
 	};
 
 	// 去重
 	var doUnique = function (arr) {
-		var result = [], hash = {};
-		for (var i = 0, elem; (elem = arr[i]) !== undefined; i++) {
+		var result = [],
+		hash = {};
+		for (let i = 0, elem; (elem = arr[i]) !== undefined; i++) {
 			if (!hash[elem]) {
 				result.push(elem);
 				hash[elem] = true;
@@ -30,7 +33,7 @@
 
 	// 插入样式表
 	var apendStyle = function (cssText) {
-		var head = document.head || document.getElementsByTagName('head')[0];
+		var head = document.head || document.querySelectorAll('head')[0];
 		var style = document.createElement('style');
 		style.type = 'text/css';
 		var textNode = document.createTextNode(cssText);
@@ -43,9 +46,15 @@
 		apendStyle(".margin8 {margin:8px;} .preview_item {padding:3px;float:left;position:relative;} .preview_box {max-width:300px;max-height:300px;vertical-align:bottom;} .preview_container {z-index:11000;} .preview_selector {position:absolute;left:0;} .preview_excluded {background:#FFCCFF;}");
 	};
 
+	// 页面显示信息
+	var msg = function (msg) {
+		$id("extracted").innerHTML = msg;
+	};
+
 	// 取得分页数量
 	var getPages = function () {
-		return parseInt(document.getElementsByClassName('l_posts_num')[0].childNodes[3].getElementsByTagName("span")[1].innerText);
+		var l_posts_num = document.querySelectorAll('.l_posts_num > li > span.red');
+		return parseInt(l_posts_num[l_posts_num.length - 1].innerText);
 	};
 
 	// 取得IMG标签中的SRC
@@ -61,13 +70,13 @@
 			var regexImageSrc = new RegExp(/((http|https):\/\/)+(\w+\.)+(\w+)[\w\/\.\-\%\=]*(jpg|jpeg|gif|png|webp)/, "gi");
 			var regexImageId = new RegExp(/([\w\d]+)\.(jpg|jpeg|gif|png|webp)$/, "gi");
 			imageSrc = images.map(function (val) {
-				var currentImageSrc = val.match(regexImageSrc);
-				if (null !== currentImageSrc && 1 === currentImageSrc.length) {
-					return "http://imgsrc.baidu.com/forum/pic/item/" + currentImageSrc[0].match(regexImageId)[0];
-				} else {
-					return "";
-				}
-			});
+					var currentImageSrc = val.match(regexImageSrc);
+					if (null !== currentImageSrc && 1 === currentImageSrc.length) {
+						return "http://imgsrc.baidu.com/forum/pic/item/" + currentImageSrc[0].match(regexImageId)[0];
+					} else {
+						return "";
+					}
+				});
 		}
 		return imageSrc;
 	};
@@ -93,16 +102,16 @@
 			if (pages === parsedPages) {
 				console.debug("提取失败", failedPages, "页");
 				var imageSrcArray = [];
-				for (var i in imageSrc) {
+				for (let i in imageSrc) {
 					console.debug("第", i, "页", imageSrc[i].length, "图");
-					for (var j = 0; j < imageSrc[i].length; j++) {
-						imageSrcArray.push(imageSrc[i][j]);
+					for (let j of imageSrc[i]) {
+						imageSrcArray.push(j);
 					}
 				}
 
 				var result = doUnique(imageSrcArray);
 				if (null === result || 0 === result.length) {
-					$id("extracted").innerHTML = "然而并没有图片 (╯#-_-)╯~~~~~~~~~~~~~~~~~╧═╧";
+					msg("然而并没有图片 (╯#-_-)╯~~~~~~~~~~~~~~~~~╧═╧");
 				} else {
 					exportAlbum(result, auto);
 				}
@@ -113,59 +122,57 @@
 
 			imageSrc[currentPage] = getImgTags(xhr.response);
 			parsedPages++;
-			$id("extracted").innerHTML = "到手" + parsedPages + "页，就剩" + (pages - parsedPages) + "页啦 (ฅ´ω`ฅ)";
+			msg(`到手${parsedPages}页，就剩${(pages - parsedPages)}页啦 (ฅ´ω\`ฅ)`);
 
 			collectImages();
 		};
 		var xhrErrorHandler = function (xhr) {
 			var currentPage = xhr.finalUrl.replace(/http\:\/\/tieba.baidu.com\/p\/(\d+)\?pn=(\d+)$/, "$2") - 1;
 
-			$id("extracted").innerHTML = "第" + currentPage + "页提取失败 (ಥ_ಥ)";
-			console.debug("第", currentPage, "页提取失败");
+			msg(`第${currentPage}页提取失败 (ಥ_ಥ)`);
+			console.debug(`第${currentPage}页提取失败 (ಥ_ಥ)`);
 			parsedPages++;
 			failedPages++;
 
 			collectImages();
 		};
 
-		for (var i = 1; i <= pages; i++) {
-			var url = window.location.origin + window.location.pathname + "?pn=" + i;
+		for (let i = 1; i <= pages; i++) {
+			let url = window.location.origin + window.location.pathname + "?pn=" + i;
 			GM_xmlhttpRequest({
-				method:  'GET',
-				url:     url,
-				onload:  parseRespond,
-				onerror: xhrErrorHandler
+				method : 'GET',
+				url : url,
+				onload : parseRespond,
+				onerror : xhrErrorHandler
 			});
 		}
 	};
 
 	// 仅收割当前分页
 	var extracterImage = function (auto) {
-		var message = $id("extracted");
-		var result = extractSinglePage(document.getElementsByClassName("p_postlist")[0].innerHTML);
+		var result = extractSinglePage(document.querySelector(".p_postlist").innerHTML);
 		if (null !== result && 0 < result.length) {
 			exportAlbum(result, auto);
 		} else {
-			message.innerHTML = "然而并不能收割 (╯#-_-)╯~~~~~~~~~~~~~~~~~╧═╧";
+			msg("然而并不能收割 (╯#-_-)╯~~~~~~~~~~~~~~~~~╧═╧");
 		}
 	};
 
 	// 收割全部分页
 	var extracterImages = function (auto) {
 		var pages = getPages();
-		var message = $id("extracted");
 		if (0 === pages) {
-			message.innerHTML = "度娘又改版了 (╯#-_-)╯~~~~~~~~~~~~~~~~~╧═╧";
+			msg("度娘又改版了 (╯#-_-)╯~~~~~~~~~~~~~~~~~╧═╧");
 		} else if (1 === pages) {
-			var result = extractSinglePage(document.getElementsByClassName("p_postlist")[0].innerHTML);
+			let result = extractSinglePage(document.querySelector(".p_postlist").innerHTML);
 			if (null !== result && 0 < result.length) {
 				exportAlbum(result, auto);
 			} else {
-				message.innerHTML = "然而并不能收割 (╯#-_-)╯~~~~~~~~~~~~~~~~~╧═╧";
+				msg("然而并不能收割 (╯#-_-)╯~~~~~~~~~~~~~~~~~╧═╧");
 			}
 		} else {
 			extractAllPages(pages, auto);
-			message.innerHTML = "正在搞这 " + pages + " 页图，不要急嘛 (๑•̀_•́๑)";
+			msg("正在搞这 " + pages + " 页图，不要急嘛 (๑•̀_•́๑)");
 		}
 	};
 
@@ -178,7 +185,7 @@
 
 		if (auto) {
 			GM_setClipboard(images.join("\r\n"));
-			$id("extracted").innerHTML = "搞到这" + imageCount + "张图啦 （⺻▽⺻ ）";
+			msg(`搞到这${imageCount}张图啦 （⺻▽⺻ ）`);
 			return;
 		}
 
@@ -187,38 +194,38 @@
 			if (null !== $id("preview_window")) {
 				document.body.removeChild($id("preview_window"));
 			}
-			$id("extracted").innerHTML = "";
+			msg("");
 		};
 
 		// 恢复被隐藏的元素
 		var showOtherElements = function () {
-			for (var i = 0; i < document.body.childNodes.length; i++) {
-				if ("DIV" === document.body.childNodes[i].tagName && "y" === document.body.childNodes[i].getAttribute("data-hide")) {
-					document.body.childNodes[i].style.display = "";
+			for (let i = 0; i < document.body.children.length; i++) {
+				if ("DIV" === document.body.children[i].tagName && "y" === document.body.children[i].getAttribute("data-hide")) {
+					document.body.children[i].style.display = "";
 				}
 			}
-			document.getElementsByClassName("tbui_aside_float_bar")[0].style.display = "";
+			document.querySelector(".tbui_aside_float_bar").style.display = "";
 		};
 
 		// 隐藏无关元素
 		var hideOtherElements = function () {
-			for (var i = 0; i < document.body.childNodes.length; i++) {
-				if ("DIV" === document.body.childNodes[i].tagName && "com_userbar_message" !== document.body.childNodes[i].id) {
-					document.body.childNodes[i].style.display = "none";
-					document.body.childNodes[i].setAttribute("data-hide", "y");
+			for (let i = 0; i < document.body.children.length; i++) {
+				if ("DIV" === document.body.children[i].tagName && "com_userbar_message" !== document.body.children[i].id) {
+					document.body.children[i].style.display = "none";
+					document.body.children[i].setAttribute("data-hide", "y");
 				}
 			}
-			document.getElementsByClassName("tbui_aside_float_bar")[0].style.display = "none";
+			document.querySelector(".tbui_aside_float_bar").style.display = "none";
 		};
 
 		// 导出选中图片链接
 		var exportSelected = function () {
 			var items = $id("preview_list");
-			var counts = items.childNodes.length;
+			var counts = items.children.length;
 			var result = [];
-			for (var i = 0; i < counts; i++) {
-				if (items.childNodes[i].childNodes[1].checked) {
-					result.push(items.childNodes[i].childNodes[0].src);
+			for (let i = 0; i < counts; i++) {
+				if (items.children[i].children[1].checked) {
+					result.push(items.children[i].children[0].src);
 				}
 			}
 			if (0 < result.length) {
@@ -238,11 +245,11 @@
 		// 选中全部图片
 		var previewSelectAll = function () {
 			var items = $id("preview_list");
-			var counts = items.childNodes.length;
+			var counts = items.children.length;
 			var result = [];
-			for (var i = 0; i < counts; i++) {
-				items.childNodes[i].childNodes[1].checked = true;
-				items.childNodes[i].className = "preview_item";
+			for (let i = 0; i < counts; i++) {
+				items.children[i].children[1].checked = true;
+				items.children[i].className = "preview_item";
 			}
 			$id("previewer_selected").innerHTML = counts;
 		};
@@ -250,11 +257,11 @@
 		// 反选
 		var previewSelectInvert = function () {
 			var items = $id("preview_list");
-			var counts = items.childNodes.length;
+			var counts = items.children.length;
 			var result = [];
-			for (var i = 0; i < counts; i++) {
-				items.childNodes[i].childNodes[1].checked = !items.childNodes[i].childNodes[1].checked;
-				items.childNodes[i].className = (items.childNodes[i].childNodes[1].checked)? "preview_item": "preview_item preview_excluded";
+			for (let i = 0; i < counts; i++) {
+				items.children[i].children[1].checked = !items.children[i].children[1].checked;
+				items.children[i].className = (items.children[i].children[1].checked) ? "preview_item" : "preview_item preview_excluded";
 			}
 			$id("previewer_selected").innerHTML = counts - parseInt($id("previewer_selected").innerHTML);
 		};
@@ -263,7 +270,7 @@
 		var previewSelector = function (o) {
 			o.nextSibling.checked = !o.nextSibling.checked;
 			var selected = $id("previewer_selected");
-			selected.innerHTML = parseInt(selected.innerHTML) + ((o.nextSibling.checked === true)? 1: -1);
+			selected.innerHTML = parseInt(selected.innerHTML) + ((o.nextSibling.checked === true) ? 1 : -1);
 			if (o.nextSibling.checked) {
 				o.parentNode.className = "preview_item";
 			} else {
@@ -323,11 +330,11 @@
 		previewer.id = "preview_matrix";
 		previewer.appendChild(itemList);
 
-		for (var i = 0; i < imageCount; i++) {
-			var item = document.createElement('li');
+		for (let i = 0; i < imageCount; i++) {
+			let item = document.createElement('li');
 			item.innerHTML = "<img id='" + "preview_img_" + i + "' class='preview_box' src='" + images[i] + "'><input type='checkbox' id='" + "preview_cb_" + i + "' class='preview_selector' checked='checked'>";
 			item.className = "preview_item";
-			item.childNodes[0].addEventListener("click", function () {
+			item.children[0].addEventListener("click", function () {
 				previewSelector(this);
 			});
 			itemList.appendChild(item);
@@ -356,12 +363,12 @@
 	// 添加按钮
 	var addButton = function () {
 		var button = document.createElement('li');
-		button.innerHTML="<a href='javascript:;' class='margin8'>收割</a><span id='extracted'></span>";
+		button.innerHTML = "<a href='javascript:;' class='margin8'>收割</a><span id='extracted'></span>";
 		button.class = "l_reply_num";
-		button.childNodes[0].addEventListener("click", function () {
+		button.children[0].addEventListener("click", function () {
 			extracterImages(false);
 		});
-		document.addEventListener("keydown", function (event) {
+		document.addEventListener("keyup", function (event) {
 			// F9 = 120
 			// F10 = 121
 			if (120 === event.keyCode) {
@@ -370,10 +377,32 @@
 				extracterImages(true);
 			}
 		}, true);
-		document.getElementsByClassName('l_posts_num')[0].appendChild(button);
+		document.querySelector('.l_posts_num').appendChild(button);
 	};
 
 	// 运行
+	(function () {
+		var DOMObserverTimer = false;
+		var DOMObserverConfig = {
+			attributes : true,
+			childList : true,
+		};
+		var DOMObserver = new MutationObserver(function () {
+				if (DOMObserverTimer !== 'false') {
+					clearTimeout(DOMObserverTimer);
+				}
+				DOMObserverTimer = setTimeout(function () {
+						DOMObserver.disconnect();
+						if (!$id("extracted")) {
+							console.log("重新添加按钮");
+							addButton();
+						}
+						DOMObserver.observe(document.querySelector('#j_core_title_wrap'), DOMObserverConfig);
+					}, 100);
+			});
+		DOMObserver.observe(document.querySelector('#j_core_title_wrap'), DOMObserverConfig);
+	})();
+
 	addStyle();
 	addButton();
-}) ();
+})();
