@@ -5,7 +5,7 @@
 // @description Adds a button that get all attached images as original size to every post.
 // @include     http://tieba.baidu.com/p/*
 // @author      cmheia
-// @version     0.2.9
+// @version     0.3.0
 // @icon        http://tb1.bdstatic.com/tb/favicon.ico
 // @grant       GM_setClipboard
 // @grant       GM_xmlhttpRequest
@@ -43,7 +43,7 @@
 
 	// 创建样式表
 	var addStyle = function () {
-		apendStyle(".margin8 {margin:8px;} .preview_item {padding:3px;float:left;position:relative;} .preview_box {max-width:300px;max-height:300px;vertical-align:bottom;} .preview_container {z-index:11000;} .preview_selector {position:absolute;left:0;} .preview_excluded {background:#FFCCFF;}");
+		apendStyle(".margin8 {margin:8px;} .preview_item {padding:3px;display:inline-block;vertical-align:top;position:relative;} .preview_box {max-width:300px;max-height:300px;vertical-align:bottom;} .preview_container {z-index:11000;} .preview_selector {position:absolute;left:0;} .preview_excluded {background:#FFCCFF;}");
 	};
 
 	// 页面显示信息
@@ -60,13 +60,24 @@
 	// 取得IMG标签中的SRC
 	var getImgTags = function (content) {
 		// console.group("取得IMG标签中的SRC");
-		var images = content.match(/<img[^<>]*class=\"BDE_Image\"[^<>]*src\=\"(?:(?:(?:http|https)\:\/\/)?[^<>]*(?:jpg|jpeg|gif|png|webp))\"[^<>]*>/g);
+		let images1 = content.match(/<img[^<>]*class=\"BDE_Image\"[^<>]*src\=\"(?:(?:(?:http|https)\:\/\/)?[^<>]*(?:jpg|jpeg|gif|png|webp))\"[^<>]*>/g);
+		let images2 = content.match(/<img[^<>]*src\=\"(?:(?:(?:http|https)\:\/\/)?[^<>]*(?:jpg|jpeg|gif|png|webp))\"[^<>]*class=\"BDE_Image\"[^<>]*>/g);
+		let images = null;
 
-		if (null === images) {
-			images = content.match(/<img[^<>]*src\=\"(?:(?:(?:http|https)\:\/\/)?[^<>]*(?:jpg|jpeg|gif|png|webp))\"[^<>]*class=\"BDE_Image\"[^<>]*>/g);
-			// images = content.match(/<img[^<>]*src\=\"(?:(?:(?:http|https)\:\/\/)?[\w\d\-]*(?:\.)?([\w\d\-]+\.[\w\d\-]+)+[\w\/\.\-\%\=]*(?:jpg|jpeg|gif|png|webp))\"[^<>]*class=\"BDE_Image\"[^<>]*>/g);
+		if (null === images1 || null === images2) {
+			return [];
 		}
-		// console.log("匹配次数", images.length, images[0]);
+		if (null !== images1 || null === images2) {
+			images = images1;
+		}
+		if (null === images1 || null !== images2) {
+			images = images2;
+		}
+		if (null !== images1 || null !== images2) {
+			images = images1.concat(images2);
+			images1 = images2 = null;
+		}
+		// console.log("匹配结果", images);
 		var imageSrc = [];
 		if (null !== images) {
 			imageSrc = images.map(function (val, i) {
@@ -101,7 +112,7 @@
 				imageSrc.splice(i, 1);
 			}
 		}
-		// console.log(imageSrc)
+		// console.log(imageSrc);
 		// console.groupEnd();
 		return imageSrc;
 	};
@@ -111,7 +122,7 @@
 		var images = getImgTags(content);
 
 		var result = doUnique(images);
-		// console.warn(result)
+		// console.warn(result);
 		if (null === result || 0 === result.length) {
 			return null;
 		}
@@ -273,7 +284,6 @@
 		var previewSelectAll = function () {
 			var items = $id("preview_list");
 			var counts = items.children.length;
-			var result = [];
 			for (let i = 0; i < counts; i++) {
 				items.children[i].children[1].checked = true;
 				items.children[i].className = "preview_item";
@@ -285,7 +295,6 @@
 		var previewSelectInvert = function () {
 			var items = $id("preview_list");
 			var counts = items.children.length;
-			var result = [];
 			for (let i = 0; i < counts; i++) {
 				items.children[i].children[1].checked = !items.children[i].children[1].checked;
 				items.children[i].className = (items.children[i].children[1].checked) ? "preview_item" : "preview_item preview_excluded";
@@ -412,7 +421,7 @@
 		var DOMObserverTimer = false;
 		var DOMObserverConfig = {
 			attributes : true,
-			childList : true,
+			childList  : true,
 		};
 		var DOMObserver = new MutationObserver(function () {
 				if (DOMObserverTimer !== 'false') {
