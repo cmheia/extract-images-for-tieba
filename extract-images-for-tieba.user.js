@@ -5,7 +5,7 @@
 // @description Adds a button that get all attached images as original size to every post.
 // @include     http://tieba.baidu.com/p/*
 // @author      cmheia
-// @version     0.3.0
+// @version     0.3.1
 // @icon        http://tb1.bdstatic.com/tb/favicon.ico
 // @grant       GM_setClipboard
 // @grant       GM_xmlhttpRequest
@@ -64,16 +64,16 @@
 		let images2 = content.match(/<img[^<>]*src\=\"(?:(?:(?:http|https)\:\/\/)?[^<>]*(?:jpg|jpeg|gif|png|webp))\"[^<>]*class=\"BDE_Image\"[^<>]*>/g);
 		let images = null;
 
-		if (null === images1 || null === images2) {
+		if (null === images1 && null === images2) {
 			return [];
 		}
-		if (null !== images1 || null === images2) {
+		if (null !== images1 && null === images2) {
 			images = images1;
 		}
-		if (null === images1 || null !== images2) {
+		if (null === images1 && null !== images2) {
 			images = images2;
 		}
-		if (null !== images1 || null !== images2) {
+		if (null !== images1 && null !== images2) {
 			images = images1.concat(images2);
 			images1 = images2 = null;
 		}
