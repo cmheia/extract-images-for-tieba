@@ -4,8 +4,9 @@
 // @namespace   https://github.com/cmheia/extract-images-for-tieba
 // @description Adds a button that get all attached images as original size to every post.
 // @include     http://tieba.baidu.com/p/*
+// @include     https://tieba.baidu.com/p/*
 // @author      cmheia
-// @version     0.3.1
+// @version     0.3.2
 // @icon        http://tb1.bdstatic.com/tb/favicon.ico
 // @grant       GM_setClipboard
 // @grant       GM_xmlhttpRequest
@@ -81,21 +82,21 @@
 		var imageSrc = [];
 		if (null !== images) {
 			imageSrc = images.map(function (val, i) {
-				let src = val.match(/(?:(?:http|https):\/\/)([^\.]*)([^\/]*)(.*)(?:\.(?:jpg|jpeg|gif|png|webp))/);
+				let src = val.match(/(?:(http[s]*):\/\/)([^\.]*)([^\/]*)(.*)(?:\.(?:jpg|jpeg|gif|png|webp))/);
 				// console.log(i, val);
 				// console.log(src);
 				if (null !== src) {
-					if ("adscdn" === src[1] || ".bdstatic.com" === src[2] ) {
+					if ("adscdn" === src[2] || ".bdstatic.com" === src[3] ) {
 						// 先去广告
 						// console.log("去广告");
 						return undefined;
 					}
-					if (".baidu.com" === src[2] || ".bdimg.com" === src[2]) {
+					if (".baidu.com" === src[3] || ".bdimg.com" === src[3]) {
 						let m = src[0].match(/(?:[\w\d\.]+)(?:jpg|jpeg|gif|png|webp)/);
 						// console.log("return", m);
-						return `http://imgsrc.baidu.com/forum/pic/item/${m[0]}`;
+						return `${src[1]}://imgsrc.baidu.com/forum/pic/item/${m[0]}`;
 					}
-					if (".sinaimg.cn" === src[2]) {
+					if (".sinaimg.cn" === src[3]) {
 						let m = src[0].match(/((?:http|https)\:\/\/[\w\d\.]+)sinaimg\.cn\/([\w\d]+)\/([\w\d\.\?]+)/);
 						// console.log("return", m);
 						return `${m[1]}sinaimg.cn/large/${m[3]}`;
@@ -137,7 +138,8 @@
 
 		var collectImages = function () {
 			if (pages === parsedPages) {
-				// console.debug("提取失败", failedPages, "页");
+				// console.log("提取失败", failedPages, "页");
+				// console.log(imageSrc);
 				var imageSrcArray = [];
 				for (let i in imageSrc) {
 					// console.debug("第", i, "页", imageSrc[i].length, "图");
@@ -155,19 +157,21 @@
 			}
 		};
 		var parseRespond = function (xhr) {
-			var currentPage = xhr.finalUrl.replace(/http\:\/\/tieba.baidu.com\/p\/(\d+)\?pn=(\d+)$/, "$2") - 1;
+			var currentPage = xhr.finalUrl.replace(/http[s]*\:\/\/tieba.baidu.com\/p\/(\d+)\?pn=(\d+)$/, "$2") - 0;
 
+			msg(`到手第${currentPage}页(共${parsedPages}页)，就剩${(pages - parsedPages)}页啦 (ฅ´ω\`ฅ)`);
+			console.log('到手第', currentPage, '页(共', parsedPages, '页)，剩', pages - parsedPages, '页');
+
+			currentPage--;
 			imageSrc[currentPage] = getImgTags(xhr.response);
 			parsedPages++;
-			msg(`到手${parsedPages}页，就剩${(pages - parsedPages)}页啦 (ฅ´ω\`ฅ)`);
-
 			collectImages();
 		};
 		var xhrErrorHandler = function (xhr) {
-			var currentPage = xhr.finalUrl.replace(/http\:\/\/tieba.baidu.com\/p\/(\d+)\?pn=(\d+)$/, "$2") - 1;
+			var currentPage = xhr.finalUrl.replace(/http[s]*\:\/\/tieba.baidu.com\/p\/(\d+)\?pn=(\d+)$/, "$2") - 0;
 
 			msg(`第${currentPage}页提取失败 (ಥ_ಥ)`);
-			// console.debug(`第${currentPage}页提取失败 (ಥ_ಥ)`);
+			console.log('第', currentPage, '页提取失败');
 			parsedPages++;
 			failedPages++;
 
@@ -428,13 +432,13 @@
 					clearTimeout(DOMObserverTimer);
 				}
 				DOMObserverTimer = setTimeout(function () {
-						DOMObserver.disconnect();
-						if (!$id("extracted")) {
-							// console.log("重新添加按钮");
-							addButton();
-						}
-						DOMObserver.observe(document.querySelector('#j_p_postlist'), DOMObserverConfig);
-					}, 100);
+					DOMObserver.disconnect();
+					if (!$id("extracted")) {
+						// console.log("重新添加按钮");
+						addButton();
+					}
+					DOMObserver.observe(document.querySelector('#j_p_postlist'), DOMObserverConfig);
+				}, 100);
 			});
 		DOMObserver.observe(document.querySelector('#j_p_postlist'), DOMObserverConfig);
 	})();
