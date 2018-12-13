@@ -234,7 +234,7 @@
 		if (outputType === 'aria2c') {
 			var padding = createPadding(images.length)
 			text = images.map(function (image, index) {
-				return image + ' --out=' + padding(index) + '.png'
+				return image + ' --out=' + padding(index + 1) + '.png'
 			}).join('\r\n')
 		} else {
 			text = images.join('\r\n')
