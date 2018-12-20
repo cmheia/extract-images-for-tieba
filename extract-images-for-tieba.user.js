@@ -6,7 +6,7 @@
 // @include     http://tieba.baidu.com/p/*
 // @include     https://tieba.baidu.com/p/*
 // @author      cmheia
-// @version     0.3.2
+// @version     0.3.3
 // @icon        http://tb1.bdstatic.com/tb/favicon.ico
 // @grant       GM_setClipboard
 // @grant       GM_xmlhttpRequest
@@ -22,7 +22,7 @@
 	// 去重
 	var doUnique = function (arr) {
 		var result = [],
-		hash = {};
+			hash = {};
 		for (let i = 0, elem; (elem = arr[i]) !== undefined; i++) {
 			if (!hash[elem]) {
 				result.push(elem);
@@ -31,6 +31,17 @@
 		}
 		return result;
 	};
+
+	// 创建padding函数
+	var createPadding = function (maxValue) {
+		var countFloat = Math.log10(maxValue)
+		var countInt = Math.ceil(countFloat)
+		var count = countFloat == countInt ? countInt + 1 : countInt
+		var zeroString = Array(count).fill('0').join('')
+		return function (value) {
+			return (zeroString + value).slice(-count)
+		}
+	}
 
 	// 插入样式表
 	var apendStyle = function (cssText) {
@@ -86,7 +97,7 @@
 				// console.log(i, val);
 				// console.log(src);
 				if (null !== src) {
-					if ("adscdn" === src[2] || ".bdstatic.com" === src[3] ) {
+					if ("adscdn" === src[2] || ".bdstatic.com" === src[3]) {
 						// 先去广告
 						// console.log("去广告");
 						return undefined;
@@ -181,10 +192,10 @@
 		for (let i = 1; i <= pages; i++) {
 			let url = window.location.origin + window.location.pathname + "?pn=" + i;
 			GM_xmlhttpRequest({
-				method : 'GET',
-				url : url,
-				onload : parseRespond,
-				onerror : xhrErrorHandler
+				method: 'GET',
+				url: url,
+				onload: parseRespond,
+				onerror: xhrErrorHandler
 			});
 		}
 	};
@@ -218,6 +229,19 @@
 		}
 	};
 
+	var exporToClipboard = function (images, outputType) {
+		var text
+		if (outputType === 'aria2c') {
+			var padding = createPadding(images.length)
+			text = images.map(function (image, index) {
+				return image + ' --out=' + padding(index + 1) + '.png'
+			}).join('\r\n')
+		} else {
+			text = images.join('\r\n')
+		}
+		GM_setClipboard(text)
+	}
+
 	// 新建图集
 	var exportAlbum = function (images, auto) {
 		if (null === images || 0 === images.length) {
@@ -226,7 +250,7 @@
 		var imageCount = images.length;
 
 		if (auto) {
-			GM_setClipboard(images.join("\r\n"));
+			exporToClipboard(images);
 			msg(`搞到这${imageCount}张图啦 （⺻▽⺻ ）`);
 			return;
 		}
@@ -261,7 +285,7 @@
 		};
 
 		// 导出选中图片链接
-		var exportSelected = function () {
+		var exportSelected = function (outputType) {
 			var items = $id("preview_list");
 			var counts = items.children.length;
 			var result = [];
@@ -271,7 +295,7 @@
 				}
 			}
 			if (0 < result.length) {
-				GM_setClipboard(result.join("\r\n"));
+				exporToClipboard(result, outputType);
 				$id("export_msg").innerHTML = "搞到这" + result.length + "张图啦 （⺻▽⺻ ）";
 			} else {
 				$id("export_msg").innerHTML = "至少选择一张图吧 ◔ ‸◔？";
@@ -354,8 +378,15 @@
 		buttonExportSelected.href = "javascript:;";
 		buttonExportSelected.className = "margin8";
 		buttonExportSelected.innerHTML = "导出选定图片";
-		buttonExportSelected.addEventListener("click", exportSelected);
+		buttonExportSelected.addEventListener("click", exportSelected.bind(null, 'default'));
 		controller.appendChild(buttonExportSelected);
+
+		var buttonExportSelected4Aria2c = document.createElement('a');
+		buttonExportSelected4Aria2c.href = "javascript:;";
+		buttonExportSelected4Aria2c.className = "margin8";
+		buttonExportSelected4Aria2c.innerHTML = "导出4Aria2c";
+		buttonExportSelected4Aria2c.addEventListener("click", exportSelected.bind(null, 'aria2c'));
+		controller.appendChild(buttonExportSelected4Aria2c);
 
 		var message = document.createElement('span');
 		message.id = "export_msg";
@@ -424,22 +455,22 @@
 	(function () {
 		var DOMObserverTimer = false;
 		var DOMObserverConfig = {
-			attributes : true,
-			childList  : true,
+			attributes: true,
+			childList: true,
 		};
 		var DOMObserver = new MutationObserver(function () {
-				if (DOMObserverTimer !== 'false') {
-					clearTimeout(DOMObserverTimer);
+			if (DOMObserverTimer !== 'false') {
+				clearTimeout(DOMObserverTimer);
+			}
+			DOMObserverTimer = setTimeout(function () {
+				DOMObserver.disconnect();
+				if (!$id("extracted")) {
+					// console.log("重新添加按钮");
+					addButton();
 				}
-				DOMObserverTimer = setTimeout(function () {
-					DOMObserver.disconnect();
-					if (!$id("extracted")) {
-						// console.log("重新添加按钮");
-						addButton();
-					}
-					DOMObserver.observe(document.querySelector('#j_p_postlist'), DOMObserverConfig);
-				}, 100);
-			});
+				DOMObserver.observe(document.querySelector('#j_p_postlist'), DOMObserverConfig);
+			}, 100);
+		});
 		DOMObserver.observe(document.querySelector('#j_p_postlist'), DOMObserverConfig);
 	})();
 
