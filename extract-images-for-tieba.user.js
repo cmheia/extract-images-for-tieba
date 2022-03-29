@@ -6,7 +6,7 @@
 // @include     http://tieba.baidu.com/p/*
 // @include     https://tieba.baidu.com/p/*
 // @author      cmheia
-// @version     0.3.2
+// @version     0.3.3
 // @icon        http://tb1.bdstatic.com/tb/favicon.ico
 // @grant       GM_setClipboard
 // @grant       GM_xmlhttpRequest
@@ -61,8 +61,8 @@
 	// 取得IMG标签中的SRC
 	var getImgTags = function (content) {
 		// console.group("取得IMG标签中的SRC");
-		let images1 = content.match(/<img[^<>]*class=\"BDE_Image\"[^<>]*src\=\"(?:(?:(?:http|https)\:\/\/)?[^<>]*(?:jpg|jpeg|gif|png|webp))\"[^<>]*>/g);
-		let images2 = content.match(/<img[^<>]*src\=\"(?:(?:(?:http|https)\:\/\/)?[^<>]*(?:jpg|jpeg|gif|png|webp))\"[^<>]*class=\"BDE_Image\"[^<>]*>/g);
+		let images1 = content.match(/<img[^<>]*class=\"BDE_Image\"[^<>]*src\=\"(?:(?:(?:http|https)\:\/\/)?[^<>]*(?:jpg|jpeg|gif|png|webp))[^\"]*\"[^<>]*>/g);
+		let images2 = content.match(/<img[^<>]*src\=\"(?:(?:(?:http|https)\:\/\/)?[^<>]*(?:jpg|jpeg|gif|png|webp))[^\"]*\"[^<>]*class=\"BDE_Image\"[^<>]*>/g);
 		let images = null;
 
 		if (null === images1 && null === images2) {
